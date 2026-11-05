@@ -1,0 +1,4 @@
+pedido_id,altura_cm,largura_cm,comprimento_cm,peso_kg
+SINT-001,10,20,30,0.5
+SINT-002,10,15,20,1.0
+SINT-003,20,30,40,0.8

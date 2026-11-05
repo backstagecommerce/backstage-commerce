@@ -20,11 +20,30 @@ Newsletter e produtos Pro são caminhos complementares. O uso dos exemplos públ
 
 | Recurso | Estado nesta revisão | O que faz | Dependências e limites |
 | --- | --- | --- | --- |
+| [`calculadora_faixa_venenosa.py`](calculadora_faixa_venenosa.py) | Verificado localmente | Audita catálogo contra a dead zone de precificação do degrau de R$ 79 (salto de taxa fixa para coparticipação de frete) e identifica destruição de margem líquida. | Python 3.9+ e biblioteca padrão. Usa parâmetros de comissão e copay definidos no CSV ou valores de referência do canal. |
 | [`calculo_cubagem_lote.py`](calculo_cubagem_lote.py) | Verificado localmente | Lê um CSV de dimensões e calcula peso cubado, peso tarifado, excesso e classificação por linha; exporta CSV e, opcionalmente, JSON. | Python 3.9+ e biblioteca padrão. Não consulta transportadora, não calcula preço de frete e não substitui a conferência do contrato aplicável. |
 | [`cubagem_lote_csv.py`](cubagem_lote_csv.py) | Verificado localmente | Auditoria CLI estruturada de cubagem em lote com modo `--demo` e exportação analítica. | Python 3.9+ e biblioteca padrão. Identifica divergências volumétricas e penalidades de frete. |
 | [`auditoria_frete_demo.py`](auditoria_frete_demo.py) | Em revisão para publicação | Contém um modo demonstrativo e um caminho opcional de consulta externa. | O caminho de API exige credencial e contrato externo; não é tratado como integração validada nesta entrega. Nunca coloque token em CSV, README ou commit. |
 
-## Início rápido
+## Auditor de Faixa Venenosa de Preços (Dead Zone Meli)
+
+O script [`calculadora_faixa_venenosa.py`](calculadora_faixa_venenosa.py) audita catálogos e detecta a chamada "faixa venenosa" (ou *dead zone* de precificação) provocada por degraus contratuais de marketplace — como a transição em R$ 79,00 no Mercado Livre:
+
+- **Abaixo de R$ 79,00:** Incide comissão percentual + taxa fixa por item (ex: R$ 6,00), sem coparticipação de frete grátis obrigatório.
+- **A partir de R$ 79,00:** A taxa fixa é eliminada, mas passa a vigorar a coparticipação mandatória de frete do seller (frequentemente entre R$ 18,00 e R$ 24,00).
+- **Efeito prático:** Produtos precificados entre R$ 79,00 e ~R$ 95,00 podem faturar mais no valor bruto, mas entregam uma Margem de Contribuição Líquida em reais menor do que se vendidos a R$ 78,90.
+
+### Como executar:
+
+```powershell
+python calculadora_faixa_venenosa.py `
+  --input exemplos_catalogo_degrau.csv `
+  --output auditoria_faixa_venenosa_resultado.csv
+```
+
+O catálogo demonstrativo [`exemplos_catalogo_degrau.csv`](exemplos_catalogo_degrau.csv) contém 6 SKUs fictícios. A execução analisa a margem de contribuição antes e depois do degrau e sugere ações de correção (recuar para o teto da faixa anterior ou reprecificar acima do limiar de recomposição).
+
+## Início rápido — Cubagem e Peso Tarifado
 
 Requer Python 3.9 ou superior. O exemplo abaixo não faz chamadas de rede e utiliza apenas a biblioteca padrão do Python.
 
@@ -53,7 +72,7 @@ Para descobrir todas as opções:
 python calculo_cubagem_lote.py --help
 ```
 
-### Exemplo reproduzível
+### Exemplo reproduzível de cubagem
 
 [`examples/pedidos_sinteticos.csv`](examples/pedidos_sinteticos.csv) contém três pedidos fictícios. Com o fator `6000`, a execução produz:
 
@@ -64,7 +83,7 @@ python calculo_cubagem_lote.py --help
 
 Esses números são derivados apenas das dimensões e dos pesos do CSV. Não são economia, cobrança ou benchmark de transportadora.
 
-## Como a conta funciona
+## Como a conta de cubagem funciona
 
 Para cada linha, o script calcula:
 

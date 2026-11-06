@@ -20,18 +20,21 @@ Newsletter e produtos Pro são caminhos complementares. O uso dos exemplos públ
 
 | Recurso | Estado nesta revisão | O que faz | Dependências e limites |
 | --- | --- | --- | --- |
-| [`calculadora_faixa_venenosa.py`](calculadora_faixa_venenosa.py) | Verificado localmente | Audita catálogo contra a dead zone de precificação do degrau de R$ 79 (salto de taxa fixa para coparticipação de frete) e identifica destruição de margem líquida. | Python 3.9+ e biblioteca padrão. Usa parâmetros de comissão e copay definidos no CSV ou valores de referência do canal. |
+| [`calculadora_faixa_venenosa.py`](calculadora_faixa_venenosa.py) | Simulação local reproduzível | Compara a margem de contribuição de um SKU com uma referência de preço em um cenário sintético de degrau. | Python 3.9+ e biblioteca padrão. Comissão e copay podem vir do CSV; degrau, preço de referência e taxa fixa estão fixos no código. Não consulta tarifas vigentes. |
 | [`calculo_cubagem_lote.py`](calculo_cubagem_lote.py) | Verificado localmente | Lê um CSV de dimensões e calcula peso cubado, peso tarifado, excesso e classificação por linha; exporta CSV e, opcionalmente, JSON. | Python 3.9+ e biblioteca padrão. Não consulta transportadora, não calcula preço de frete e não substitui a conferência do contrato aplicável. |
-| [`cubagem_lote_csv.py`](cubagem_lote_csv.py) | Verificado localmente | Auditoria CLI estruturada de cubagem em lote com modo `--demo` e exportação analítica. | Python 3.9+ e biblioteca padrão. Identifica divergências volumétricas e penalidades de frete. |
+| [`cubagem_lote_csv.py`](cubagem_lote_csv.py) | Verificado localmente | Simulação CLI de cubagem em lote com modo `--demo` e exportação analítica. | Python 3.9+ e biblioteca padrão. Identifica excesso teórico de cubagem; não comprova penalidade ou cobrança. |
 | [`auditoria_frete_demo.py`](auditoria_frete_demo.py) | Em revisão para publicação | Contém um modo demonstrativo e um caminho opcional de consulta externa. | O caminho de API exige credencial e contrato externo; não é tratado como integração validada nesta entrega. Nunca coloque token em CSV, README ou commit. |
 
-## Auditor de Faixa Venenosa de Preços (Dead Zone Meli)
+## Auditor de Faixa Venenosa de Preços — simulação de degrau
 
-O script [`calculadora_faixa_venenosa.py`](calculadora_faixa_venenosa.py) audita catálogos e detecta a chamada "faixa venenosa" (ou *dead zone* de precificação) provocada por degraus contratuais de marketplace — como a transição em R$ 79,00 no Mercado Livre:
+O script [`calculadora_faixa_venenosa.py`](calculadora_faixa_venenosa.py) demonstra como um salto de custo pode reduzir a margem de contribuição mesmo quando o preço aumenta. O cenário usa estas premissas sintéticas, sem representar regras vigentes do Mercado Livre ou de outro canal:
 
-- **Abaixo de R$ 79,00:** Incide comissão percentual + taxa fixa por item (ex: R$ 6,00), sem coparticipação de frete grátis obrigatório.
-- **A partir de R$ 79,00:** A taxa fixa é eliminada, mas passa a vigorar a coparticipação mandatória de frete do seller (frequentemente entre R$ 18,00 e R$ 24,00).
-- **Efeito prático:** Produtos precificados entre R$ 79,00 e ~R$ 95,00 podem faturar mais no valor bruto, mas entregam uma Margem de Contribuição Líquida em reais menor do que se vendidos a R$ 78,90.
+- **Abaixo de R$ 79,00:** O modelo aplica taxa fixa de R$ 6,00 e frete do vendedor igual a zero.
+- **A partir de R$ 79,00:** O modelo aplica taxa fixa zero e usa `copay_frete` do CSV (R$ 19,50 quando a coluna está ausente).
+- **Referência de comparação:** R$ 78,90, com taxa fixa de R$ 6,00 e frete zero. Esses três valores e o degrau de R$ 79,00 são fixos no código; não podem ser alterados pelo CSV ou por opção de canal.
+- **Comissão:** `comissao_pct` do CSV, em porcentagem; padrão sintético de 16 quando a coluna está ausente. Não existe consulta automática de comissão ou frete.
+
+Esses valores não têm fonte tarifária validada nesta entrega. Confira as regras do seu contrato antes de modelar uma operação real. A conta subtrai custo do produto, comissão, taxa fixa e frete do vendedor; não inclui impostos, devoluções, publicidade ou outros custos e não representa lucro líquido.
 
 ### Como executar:
 
@@ -41,7 +44,19 @@ python calculadora_faixa_venenosa.py `
   --output auditoria_faixa_venenosa_resultado.csv
 ```
 
-O catálogo demonstrativo [`exemplos_catalogo_degrau.csv`](exemplos_catalogo_degrau.csv) contém 6 SKUs fictícios. A execução analisa a margem de contribuição antes e depois do degrau e sugere ações de correção (recuar para o teto da faixa anterior ou reprecificar acima do limiar de recomposição).
+O catálogo demonstrativo [`exemplos_catalogo_degrau.csv`](exemplos_catalogo_degrau.csv) contém 6 SKUs fictícios. Com essas entradas, 2 recebem `FAIXA_VENENOSA_PREJUIZO`: SKU-003 e SKU-004. Suas margens simuladas são R$ 16,54 e R$ 16,82, com diferenças de -R$ 11,74 e -R$ 8,46 em relação à referência. O campo `Preco_Sugerido_Equilibrio` mostra R$ 94,97 para ambos, arredondado para duas casas; esse arredondamento pode deixar a margem ligeiramente abaixo da referência.
+
+Os rótulos `PREJUIZO` e `SAUDAVEL` são nomes do CSV: indicam comparação com a referência e não comprovam prejuízo absoluto ou rentabilidade. Abaixo do degrau, o script mantém o preço e informa diferença zero; não otimiza o catálogo nem recomenda automaticamente reduzir preços.
+
+### Contrato e limites da calculadora
+
+O CSV usa UTF-8 (BOM opcional), vírgula como separador e ponto decimal. O cabeçalho exige `sku,titulo,custo_produto,preco_venda`, sem distinção de maiúsculas/minúsculas; `comissao_pct` e `copay_frete` são opcionais. Colunas adicionais nomeadas são aceitas. Cabeçalhos vazios/duplicados, campos obrigatórios vazios, registros com células faltantes/excedentes, CSV malformado e ausência de registros são recusados. Linhas físicas vazias são ignoradas.
+
+Os números devem ser finitos: custo e copay não negativos, preço positivo e comissão entre 0 (inclusive) e 100 (exclusive). `NaN`, infinitos e resultados intermediários não finitos são recusados. O copay é validado mesmo abaixo do degrau. Defaults aplicam-se somente à coluna ausente; célula opcional vazia é erro.
+
+Entrada inválida retorna código de saída `2` e diagnóstico em stderr com linha física/campo; em registros multilinha, a linha pode indicar o fim do registro. Falha de arquivo/codificação retorna `1`. Nos casos testados, ambos são erros controlados, sem traceback ou mensagem de sucesso. O lote é validado antes da exportação e gravado em temporário na pasta de destino, substituindo a saída somente após a gravação completa. Em erro tratado, nenhuma saída final parcial é criada e uma saída antiga fica intacta, com aviso de que não foi atualizada. Confira o código de saída; a presença de um arquivo antigo não indica sucesso. Entrada e saída apontando para o mesmo arquivo são recusadas.
+
+Os cenários de CLI, compatibilidade de CSV e falhas de gravação/substituição foram testados em Windows com Python 3.12.10. Não foram testados outros runtimes, concorrência entre escritores, queda de energia, disco cheio real ou falha do próprio mecanismo de limpeza de temporários. A verificação cobre os casos executados e não garante robustez integral. Premissas e dados continuam sintéticos; não automatize decisões comerciais com essa saída.
 
 ## Início rápido — Cubagem e Peso Tarifado
 
@@ -100,6 +115,8 @@ O código arredonda o peso cubado e o excesso para três casas. A classificaçã
 - O script não valida se a transportadora aceita o fator informado.
 - O script não consulta faturas, tabelas de preço, impostos, SLA ou eventos de rastreio.
 - Linhas com número inválido são ignoradas com aviso; revise a saída antes de tomar decisão operacional.
+- Em `calculo_cubagem_lote.py`, campos de dimensão/peso ausentes ou vazios recebem valores padrão; números negativos e não finitos não são rejeitados integralmente. Confira entradas completas, finitas e positivas e use fator positivo. A classificação descreve o modelo, não uma cobrança confirmada.
+- Em `cubagem_lote_csv.py`, `--demo` usa o fator interno `6000`; `--fator` é aplicado ao caminho `--input`, com prioridade para a coluna opcional `fator_cubagem` por linha. Para testar outro contrato, use um CSV explícito.
 - O script não foi desenhado para receber segredos. Integrações externas devem ser especificadas e testadas separadamente.
 
 ## Contribuição

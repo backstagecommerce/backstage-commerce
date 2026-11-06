@@ -104,12 +104,12 @@ def imprimir_painel(resultados: List[Dict[str, Any]], fator: int):
     total_excesso_kg = sum(r["excesso_kg"] for r in penalizados)
 
     print("\n" + "=" * 80)
-    print(f" 📦 AUDITORIA DE CUBAGEM EM LOTE — BACKSTAGE COMMERCE (Fator {fator})")
+    print(f" 📦 SIMULAÇÃO DE CUBAGEM EM LOTE — BACKSTAGE COMMERCE (Fator {fator})")
     print("=" * 80)
     print(f" Total de Embalagens Auditadas : {total}")
-    print(f" Penalizadas na Cubagem       : {len(penalizados)} ({len(penalizados)/total*100:.1f}%)")
+    print(f" Cubado acima do Físico       : {len(penalizados)} ({len(penalizados)/total*100:.1f}%)")
     print(f" Embalagens Críticas (>100%)   : {len(criticos)} ({len(criticos)/total*100:.1f}%)")
-    print(f" 'Vento' Total Faturado em KG : {total_excesso_kg:.2f} kg extras cobrados")
+    print(f" Excesso Teórico de Cubagem   : {total_excesso_kg:.2f} kg acima do peso físico")
     print("-" * 80)
     print(f"{'ID':<12} | {'DIMENSÕES':<11} | {'FÍSICO':<8} | {'CUBADO':<8} | {'TARIFADO':<8} | {'STATUS'}")
     print("-" * 80)
@@ -118,10 +118,10 @@ def imprimir_painel(resultados: List[Dict[str, Any]], fator: int):
         print(f"{r['item_id']:<12} | {r['dimensoes_cm']:<11} | {r['peso_fisico_kg']:<8.2f} | {r['peso_cubado_kg']:<8.2f} | {r['peso_tarifado_kg']:<8.2f} | {r['classificacao']}")
 
     print("=" * 80)
-    print(" 💡 REGRA DE ENGENHARIA LOGÍSTICA:")
-    print("  Toda embalagem onde o peso cubado supera o peso físico representa frete pago")
-    print("  para transportar ar. Reduzir 2cm a 3cm nas três dimensões pode economizar")
-    print("  até R$ 12 a R$ 25 por pedido em transportadoras rodoviárias.")
+    print(" 💡 LIMITES DA SIMULAÇÃO:")
+    print("  Peso cubado acima do físico indica excesso teórico no modelo.")
+    print("  Confira fator, faixas e regras no contrato e compare com a fatura.")
+    print("  Esta simulação não comprova cobrança nem estima economia financeira.")
     print("=" * 80 + "\n")
 
 
@@ -138,11 +138,11 @@ def salvar_csv(resultados: List[Dict[str, Any]], destino: str):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Calculadora em Lote de Cubagem e Detecção de 'Vento Logístico' — Backstage Commerce"
+        description="Simulação em Lote de Cubagem e Excesso Teórico — Backstage Commerce"
     )
     parser.add_argument("--input", required=True, help="Arquivo CSV de entrada com as dimensões dos pedidos")
     parser.add_argument("--output", default="cubagem_lote_resultado.csv", help="Arquivo CSV de saída")
-    parser.add_argument("--fator", type=int, default=6000, help="Fator de cubagem (6000 padrão BR, 5000 expresso/aéreo)")
+    parser.add_argument("--fator", type=int, default=6000, help="Fator de cubagem conforme contrato (default da simulação: 6000)")
     parser.add_argument("--json", help="Exportar resultado também em JSON estruturado")
 
     args = parser.parse_args()

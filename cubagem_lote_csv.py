@@ -3,7 +3,7 @@
 """
 =============================================================================
 BACKSTAGE COMMERCE - ENGENHARIA DE LOGÍSTICA & E-COMMERCE
-Calculadora de Cubagem em Lote e Auditoria de Peso Tarifável (CSV)
+Simulação de Cubagem em Lote e Peso Teórico (CSV)
 =============================================================================
 Arquivo: cubagem_lote_csv.py
 Autor: Volt (Engenheiro de Automações & Integrações)
@@ -31,7 +31,7 @@ if sys.platform == "win32":
     except Exception:
         pass
 
-# Fator padrão de cubagem rodoviário e aéreo nacional
+# Default da simulação; consulte o fator aplicável no contrato de transporte
 # Fórmula: (Comprimento x Largura x Altura em cm) / Fator = Peso Cubado em kg
 FATOR_CUBAGEM_PADRAO = 6000
 
@@ -65,7 +65,7 @@ class ResultadoCubagem:
 def calcular_cubagem(registro: RegistroEnvio) -> ResultadoCubagem:
     """
     Executa a auditoria dimensional de um pacote individual.
-    Identifica se a transportadora cobrará pelo peso físico ou pelo volume.
+    Simula o maior entre peso físico e cubado; não verifica cobrança ou contrato.
     """
     volume = registro.comprimento_cm * registro.largura_cm * registro.altura_cm
     fator = registro.fator_cubagem if registro.fator_cubagem > 0 else FATOR_CUBAGEM_PADRAO
@@ -82,8 +82,8 @@ def calcular_cubagem(registro: RegistroEnvio) -> ResultadoCubagem:
         percentual = 0.0
 
     if sofreu_cubagem:
-        status = "ALERTA: SOBRETAXA DE CUBAGEM"
-        obs = f"Cobrança baseada em volume (+{diferenca:.3f} kg tarifáveis)"
+        status = "ALERTA: EXCESSO TEÓRICO DE CUBAGEM"
+        obs = f"Simulação baseada em volume (+{diferenca:.3f} kg teóricos)"
     else:
         status = "OK: PESO REAL"
         obs = "Peso físico predominante sobre cubagem"
@@ -105,7 +105,7 @@ def calcular_cubagem(registro: RegistroEnvio) -> ResultadoCubagem:
 
 def gerar_dados_demo() -> List[RegistroEnvio]:
     """
-    Retorna lote simulado baseado em casos reais de e-commerce e marketplaces.
+    Retorna lote sintético ilustrativo de e-commerce e marketplaces.
     Demonstra armadilhas comuns: calçados, travesseiros, luminárias e caixas superdimensionadas.
     """
     return [
@@ -236,7 +236,7 @@ def imprimir_relatorio_terminal(resultados: List[ResultadoCubagem]) -> None:
     excesso_peso_total = peso_cobrado_total - peso_declarado_total
 
     print("=" * 88)
-    print("  BACKSTAGE COMMERCE — AUDITORIA DE CUBAGEM EM LOTE (ESTRUTURA DE FATURA)")
+    print("  BACKSTAGE COMMERCE — SIMULAÇÃO DE CUBAGEM EM LOTE (SEM CONFERÊNCIA DE FATURA)")
     print("=" * 88)
     print(f"{'PEDIDO':<12} {'SKU':<28} {'DECLARADO':<10} {'CUBADO':<10} {'TRIBUTADO':<10} {'STATUS':<15}")
     print("-" * 88)
@@ -251,36 +251,36 @@ def imprimir_relatorio_terminal(resultados: List[ResultadoCubagem]) -> None:
     print("=" * 88)
     print("RESUMO EXECUTIVO DO LOTE:")
     print(f"  * Total de Pacotes Analisados:     {total_pacotes}")
-    print(f"  * Pacotes com Penalidade Cubagem: {pacotes_com_sobretaxa} ({taxa_vazamento:.1f}% do lote)")
+    print(f"  * Pacotes com Excesso Teórico:    {pacotes_com_sobretaxa} ({taxa_vazamento:.1f}% do lote)")
     print(f"  * Peso Físico Declarado:          {peso_declarado_total:.3f} kg")
-    print(f"  * Peso Real Faturado/Cobrado:     {peso_cobrado_total:.3f} kg")
-    print(f"  * Quilos 'Invisíveis' Faturados:   +{excesso_peso_total:.3f} kg (+{(excesso_peso_total/peso_declarado_total*100 if peso_declarado_total>0 else 0):.1f}%)")
+    print(f"  * Peso Teórico max(físico,cubado): {peso_cobrado_total:.3f} kg")
+    print(f"  * Excesso Teórico de Cubagem:     +{excesso_peso_total:.3f} kg (+{(excesso_peso_total/peso_declarado_total*100 if peso_declarado_total>0 else 0):.1f}%)")
     print("=" * 88)
     print("DIAGNÓSTICO TÉCNICO:")
     if excesso_peso_total > 0:
         print(
-            f"  AVISO CRÍTICO: {excesso_peso_total:.3f} kg adicionais estão sendo cobrados pela transportadora\n"
-            f"  sem terem sido repassados no cálculo de frete da loja no checkout.\n"
-            f"  Ação recomendada: Adequar as dimensões das embalagens no ERP ou parametrizar o cálculo de cubagem no checkout."
+            f"  SIMULAÇÃO: {excesso_peso_total:.3f} kg teóricos acima do peso físico declarado.\n"
+            f"  Cobrança, repasse no checkout e economia financeira não foram verificados.\n"
+            f"  Confira dimensões, fator e faixas no contrato antes de comparar com a fatura."
         )
     else:
-        print("  OPERAÇÃO SAUDÁVEL: Todas as embalagens operam dentro da densidade do peso físico.")
+        print("  SIMULAÇÃO SEM EXCESSO: Peso físico igual ou superior ao cubado em todas as embalagens.")
     print("=" * 88)
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Backstage Commerce - Calculadora e Auditoria de Cubagem Logística em Lote (CSV)"
+        description="Backstage Commerce - Simulação de Cubagem Logística em Lote (CSV), sem comprovação de cobrança"
     )
     parser.add_argument(
         "--demo",
         action="store_true",
-        help="Executa a demonstração com lote de amostra e dados reais simulados",
+        help="Executa demonstração com lote sintético e fator fixo 6000 (ignora --fator)",
     )
     parser.add_argument(
         "--input",
         type=str,
-        help="Caminho do arquivo CSV de entrada (colunas: pedido_id, sku, peso_kg, altura_cm, largura_cm, comprimento_cm)",
+        help="CSV de entrada: pedido_id, sku, peso_kg, altura_cm, largura_cm, comprimento_cm; fator_cubagem opcional por linha prevalece sobre --fator",
     )
     parser.add_argument(
         "--output",
@@ -291,7 +291,7 @@ def main():
         "--fator",
         type=int,
         default=FATOR_CUBAGEM_PADRAO,
-        help=f"Fator de cubagem da transportadora (Padrão: {FATOR_CUBAGEM_PADRAO})",
+        help=f"Fator conforme contrato para CSV sem fator por linha (default da simulação: {FATOR_CUBAGEM_PADRAO}; não se aplica ao --demo)",
     )
 
     args = parser.parse_args()
